@@ -341,7 +341,7 @@ def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
             if art.get("type") in ("Course", "Series", "Requirement"):
                 insert_articulation(conn, major_id, art)
 
-        time.sleep(0.3)
+        time.sleep(1.5)
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
