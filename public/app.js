@@ -1,9 +1,11 @@
 let nextId = 1;
 let catalog = [];
+let allMajors = [];
 let semesters = [
   { id: nextId++, name: 'Semester 1', classes: [{ id: nextId++, value: '' }, { id: nextId++, value: '' }] }
 ];
 let selectedMajorId = null;
+let selectedUniversity = null;
 
 const AREA_LABELS = {
   '1A': 'English Composition',
@@ -35,19 +37,25 @@ async function init() {
     fetch('/api/cerritos-courses').then(r => r.json()),
   ]);
 
-  if (Array.isArray(majorsData)) {
-    const select = document.getElementById('major-select');
-    for (const m of majorsData) {
-      const opt = document.createElement('option');
-      opt.value = m.id;
-      opt.textContent = m.name;
-      select.appendChild(opt);
-    }
-  }
-
+  if (Array.isArray(majorsData)) allMajors = majorsData;
   if (Array.isArray(catalogData)) catalog = catalogData;
 
   renderSemesters();
+}
+
+function populateMajors(university) {
+  const select = document.getElementById('major-select');
+  select.innerHTML = '<option value="">— select a major —</option>';
+  const filtered = allMajors.filter(m => m.university === university);
+  for (const m of filtered) {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  }
+  select.disabled = filtered.length === 0;
+  selectedMajorId = null;
+  document.getElementById('check-transfer-btn').disabled = true;
 }
 
 // ── Semester rendering ────────────────────────────────────────────────────────
@@ -165,6 +173,20 @@ function clearResults() {
 }
 
 // ── Event listeners ───────────────────────────────────────────────────────────
+
+document.getElementById('uni-select').addEventListener('change', (e) => {
+  selectedUniversity = e.target.value || null;
+  selectedMajorId = null;
+  clearResults();
+  if (selectedUniversity) {
+    populateMajors(selectedUniversity);
+  } else {
+    const select = document.getElementById('major-select');
+    select.innerHTML = '<option value="">— select a university first —</option>';
+    select.disabled = true;
+    document.getElementById('check-transfer-btn').disabled = true;
+  }
+});
 
 document.getElementById('major-select').addEventListener('change', (e) => {
   selectedMajorId = e.target.value ? Number(e.target.value) : null;

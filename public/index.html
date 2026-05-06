@@ -10,9 +10,20 @@
   <div id="app">
 
     <div class="major-selector">
+      <label class="label-muted">University</label>
+      <select id="uni-select">
+        <option value="">— select a university —</option>
+        <option value="UCI">UC Irvine</option>
+        <option value="UCLA">UC Los Angeles</option>
+        <option value="UCSD">UC San Diego</option>
+        <option value="Berkeley">UC Berkeley</option>
+      </select>
+    </div>
+
+    <div class="major-selector">
       <label class="label-muted">Target Major</label>
-      <select id="major-select">
-        <option value="">— select a major —</option>
+      <select id="major-select" disabled>
+        <option value="">— select a university first —</option>
       </select>
     </div>
 

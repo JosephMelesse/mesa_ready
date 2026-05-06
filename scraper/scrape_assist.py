@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Scrape ASSIST.org articulation agreements between Cerritos College and UCI
+Scrape ASSIST.org articulation agreements between Cerritos College and UC campuses
 for engineering-related majors, plus the full UC-transferable Cerritos catalog.
 """
 
+import argparse
 import json
 import os
 import time
@@ -12,9 +13,15 @@ import psycopg2
 from psycopg2.extras import Json
 
 CERRITOS_ID = 104
-UCI_ID = 120
 ACADEMIC_YEAR_ID = 76  # 2025-2026
 ACADEMIC_YEAR_CODE = "2025-2026"
+
+UC_CAMPUSES = {
+    'UCI':      120,
+    'UCLA':     117,
+    'UCSD':     119,
+    'Berkeley': 107,
+}
 
 ENGINEERING_KEYWORDS = ["engineering", "computer science"]
 
@@ -44,11 +51,11 @@ def api_get(path: str, xsrf: str, params: dict | None = None) -> dict:
     return resp.json()
 
 
-def get_engineering_reports(xsrf: str) -> list[dict]:
+def get_engineering_reports(xsrf: str, uc_id: int) -> list[dict]:
     data = api_get(
         "/api/agreements",
         xsrf,
-        {"receivingInstitutionId": UCI_ID, "sendingInstitutionId": CERRITOS_ID,
+        {"receivingInstitutionId": uc_id, "sendingInstitutionId": CERRITOS_ID,
          "academicYearId": ACADEMIC_YEAR_ID, "categoryCode": "major"},
     )
     return [r for r in data.get("reports", [])
@@ -75,8 +82,13 @@ def create_schema(conn):
                 name            TEXT NOT NULL,
                 academic_year   TEXT NOT NULL,
                 report_key      TEXT NOT NULL UNIQUE,
+                university      TEXT NOT NULL DEFAULT 'UCI',
                 scraped_at      TIMESTAMPTZ DEFAULT NOW()
             )
+        """)
+        cur.execute("""
+            ALTER TABLE majors
+                ADD COLUMN IF NOT EXISTS university TEXT NOT NULL DEFAULT 'UCI'
         """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS articulations (
@@ -273,42 +285,32 @@ def upsert_catalog(conn, courses: list[dict]) -> None:
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def upsert_major(conn, name: str, key: str) -> int:
+def upsert_major(conn, name: str, key: str, university: str) -> int:
     with conn.cursor() as cur:
         cur.execute("""
-            INSERT INTO majors (name, academic_year, report_key)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (report_key) DO UPDATE SET name = EXCLUDED.name
+            INSERT INTO majors (name, academic_year, report_key, university)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (report_key) DO UPDATE SET name = EXCLUDED.name, university = EXCLUDED.university
             RETURNING id
-        """, (name, ACADEMIC_YEAR_CODE, key))
+        """, (name, ACADEMIC_YEAR_CODE, key, university))
         row = cur.fetchone()
     conn.commit()
     return row[0]
 
 
-# ── Main ───────────────────────────────────────────────────────────────────
+def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
+    print(f"\n{'='*50}")
+    print(f"Scraping {uni_name} (ASSIST ID: {uc_id})")
+    print(f"{'='*50}")
 
-def main():
-    print("Obtaining XSRF token...")
-    xsrf = get_xsrf_token()
-
-    print("\nFetching UC-transferable Cerritos catalog...")
-    catalog = fetch_uc_transferable_catalog(xsrf)
-    print(f"  {len(catalog)} courses found")
-
-    print("\nFetching engineering articulation majors...")
-    reports = get_engineering_reports(xsrf)
-    print(f"  {len(reports)} majors found:")
+    reports = get_engineering_reports(xsrf, uc_id)
+    print(f"  {len(reports)} engineering/CS majors found:")
     for r in reports:
         print(f"    {r['label']}")
 
-    print("\nConnecting to database...")
-    conn = psycopg2.connect(DB_DSN)
-    create_schema(conn)
-
-    print("\nPopulating cerritos_catalog...")
-    upsert_catalog(conn, catalog)
-    print("  Done")
+    if not reports:
+        print("  Nothing to scrape.")
+        return
 
     for report in reports:
         name, key = report["label"], report["key"]
@@ -322,7 +324,7 @@ def main():
             type_counts[t] = type_counts.get(t, 0) + 1
         print(f"  {len(arts)} rows: {type_counts}")
 
-        major_id = upsert_major(conn, name, key)
+        major_id = upsert_major(conn, name, key, uni_name)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM articulations WHERE major_id = %s", (major_id,))
         conn.commit()
@@ -333,6 +335,59 @@ def main():
                 insert_articulation(conn, major_id, art)
 
         time.sleep(0.3)
+
+
+# ── Main ───────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Scrape ASSIST.org articulation data for Cerritos → UC transfers"
+    )
+    parser.add_argument(
+        '--university', choices=list(UC_CAMPUSES.keys()),
+        help="Scrape one university (default: all)"
+    )
+    parser.add_argument(
+        '--list-institutions', action='store_true',
+        help="Print UC institution IDs from ASSIST.org and exit"
+    )
+    args = parser.parse_args()
+
+    print("Obtaining XSRF token...")
+    xsrf = get_xsrf_token()
+
+    if args.list_institutions:
+        print("\nFetching institutions from ASSIST.org...")
+        data = api_get('/api/institutions', xsrf)
+        institutions = data if isinstance(data, list) else data.get('institutions', [])
+        print("\nUC Institutions found:")
+        for inst in sorted(institutions, key=lambda i: i.get('id', 0)):
+            names = inst.get('names', [])
+            name = names[0].get('name', '') if names else inst.get('name', str(inst))
+            if 'university of california' in name.lower():
+                print(f"  ID {inst['id']:4d}  {name}")
+        return
+
+    targets = (
+        {args.university: UC_CAMPUSES[args.university]}
+        if args.university
+        else UC_CAMPUSES
+    )
+
+    print("\nFetching UC-transferable Cerritos catalog...")
+    catalog = fetch_uc_transferable_catalog(xsrf)
+    print(f"  {len(catalog)} courses found")
+
+    print("\nConnecting to database...")
+    conn = psycopg2.connect(DB_DSN)
+    create_schema(conn)
+
+    print("\nPopulating cerritos_catalog...")
+    upsert_catalog(conn, catalog)
+    print("  Done")
+
+    for uni_name, uc_id in targets.items():
+        scrape_university(conn, xsrf, uni_name, uc_id)
 
     conn.close()
 

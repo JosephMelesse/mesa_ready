@@ -19,8 +19,14 @@ async function ensureSchema() {
       name TEXT NOT NULL,
       academic_year TEXT NOT NULL,
       report_key TEXT NOT NULL UNIQUE,
+      university TEXT NOT NULL DEFAULT 'UCI',
       scraped_at TIMESTAMPTZ DEFAULT NOW()
     )
+  `)
+
+  await pool.query(`
+    ALTER TABLE majors
+      ADD COLUMN IF NOT EXISTS university TEXT NOT NULL DEFAULT 'UCI'
   `)
 
   await pool.query(`
@@ -99,9 +105,13 @@ async function ensureSchema() {
 app.use(express.json())
 app.use(express.static(path.join(__dirname, '../public')))
 
-app.get('/api/majors', async (_req, res) => {
+app.get('/api/majors', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT id, name FROM majors ORDER BY name')
+    const { university } = req.query
+    const { rows } = await pool.query(
+      'SELECT id, name, university FROM majors WHERE ($1::text IS NULL OR university = $1) ORDER BY name',
+      [university ?? null]
+    )
     res.json(rows)
   } catch (e) {
     res.status(500).json({ error: String(e) })
