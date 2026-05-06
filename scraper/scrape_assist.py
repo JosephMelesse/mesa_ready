@@ -7,9 +7,11 @@ for engineering-related majors, plus the full UC-transferable Cerritos catalog.
 import argparse
 import json
 import os
+import re
 import time
 import requests
 import psycopg2
+from html.parser import HTMLParser
 from psycopg2.extras import Json
 
 CERRITOS_ID = 104
@@ -34,6 +36,40 @@ BASE_HEADERS = {
 }
 
 SESSION = requests.Session()
+
+
+class _HTMLStripper(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self._parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('p', 'br'):
+            self._parts.append('\n')
+
+    def handle_data(self, data):
+        self._parts.append(data)
+
+    def get_text(self):
+        return re.sub(r'\n{3,}', '\n\n', ''.join(self._parts)).strip()
+
+
+def extract_notes(template_assets: str) -> str | None:
+    if not template_assets:
+        return None
+    try:
+        assets = json.loads(template_assets)
+        parts = []
+        for asset in assets:
+            if asset.get("type") == "GeneralText" and asset.get("content"):
+                s = _HTMLStripper()
+                s.feed(asset["content"])
+                text = s.get_text()
+                if text:
+                    parts.append(text)
+        return '\n\n'.join(parts) or None
+    except Exception:
+        return None
 
 
 def get_xsrf_token() -> str:
@@ -90,12 +126,17 @@ def create_schema(conn):
                 academic_year   TEXT NOT NULL,
                 report_key      TEXT NOT NULL UNIQUE,
                 university      TEXT NOT NULL DEFAULT 'UCI',
+                template_notes  TEXT,
                 scraped_at      TIMESTAMPTZ DEFAULT NOW()
             )
         """)
         cur.execute("""
             ALTER TABLE majors
                 ADD COLUMN IF NOT EXISTS university TEXT NOT NULL DEFAULT 'UCI'
+        """)
+        cur.execute("""
+            ALTER TABLE majors
+                ADD COLUMN IF NOT EXISTS template_notes TEXT
         """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS articulations (
@@ -292,14 +333,17 @@ def upsert_catalog(conn, courses: list[dict]) -> None:
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
-def upsert_major(conn, name: str, key: str, university: str) -> int:
+def upsert_major(conn, name: str, key: str, university: str, template_notes: str | None = None) -> int:
     with conn.cursor() as cur:
         cur.execute("""
-            INSERT INTO majors (name, academic_year, report_key, university)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (report_key) DO UPDATE SET name = EXCLUDED.name, university = EXCLUDED.university
+            INSERT INTO majors (name, academic_year, report_key, university, template_notes)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (report_key) DO UPDATE SET
+                name           = EXCLUDED.name,
+                university     = EXCLUDED.university,
+                template_notes = EXCLUDED.template_notes
             RETURNING id
-        """, (name, ACADEMIC_YEAR_CODE, key, university))
+        """, (name, ACADEMIC_YEAR_CODE, key, university, template_notes))
         row = cur.fetchone()
     conn.commit()
     return row[0]
@@ -324,6 +368,7 @@ def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
         print(f"\nScraping articulations: {name}")
         result = fetch_articulation(key, xsrf)
         arts = json.loads(result["articulations"])
+        notes = extract_notes(result.get("templateAssets"))
 
         type_counts: dict[str, int] = {}
         for row in arts:
@@ -331,7 +376,7 @@ def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
             type_counts[t] = type_counts.get(t, 0) + 1
         print(f"  {len(arts)} rows: {type_counts}")
 
-        major_id = upsert_major(conn, name, key, uni_name)
+        major_id = upsert_major(conn, name, key, uni_name, notes)
         with conn.cursor() as cur:
             cur.execute("DELETE FROM articulations WHERE major_id = %s", (major_id,))
         conn.commit()

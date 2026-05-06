@@ -30,6 +30,11 @@ async function ensureSchema() {
   `)
 
   await pool.query(`
+    ALTER TABLE majors
+      ADD COLUMN IF NOT EXISTS template_notes TEXT
+  `)
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS articulations (
       id SERIAL PRIMARY KEY,
       major_id INTEGER REFERENCES majors(id) ON DELETE CASCADE,
@@ -113,6 +118,18 @@ app.get('/api/majors', async (req, res) => {
       [university ?? null]
     )
     res.json(rows)
+  } catch (e) {
+    res.status(500).json({ error: String(e) })
+  }
+})
+
+app.get('/api/major-notes/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT template_notes FROM majors WHERE id = $1',
+      [req.params.id]
+    )
+    res.json({ notes: rows[0]?.template_notes ?? null })
   } catch (e) {
     res.status(500).json({ error: String(e) })
   }

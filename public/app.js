@@ -188,11 +188,28 @@ document.getElementById('uni-select').addEventListener('change', (e) => {
   }
 });
 
-document.getElementById('major-select').addEventListener('change', (e) => {
+document.getElementById('major-select').addEventListener('change', async (e) => {
   selectedMajorId = e.target.value ? Number(e.target.value) : null;
   document.getElementById('check-transfer-btn').disabled = !selectedMajorId;
   clearResults();
+  if (selectedMajorId) {
+    const { notes } = await fetch(`/api/major-notes/${selectedMajorId}`).then(r => r.json());
+    showMajorNotes(notes);
+  } else {
+    showMajorNotes(null);
+  }
 });
+
+function showMajorNotes(notes) {
+  const container = document.getElementById('major-notes');
+  if (!notes) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <details class="major-notes-details">
+      <summary class="major-notes-summary">University Notes</summary>
+      <pre class="major-notes-body">${esc(notes)}</pre>
+    </details>
+  `;
+}
 
 document.getElementById('add-semester-btn').addEventListener('click', () => {
   const newSem = { id: nextId++, name: `Semester ${semesters.length + 1}`, classes: [] };
