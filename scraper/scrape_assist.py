@@ -19,8 +19,8 @@ ACADEMIC_YEAR_CODE = "2025-2026"
 UC_CAMPUSES = {
     'UCI':      120,
     'UCLA':     117,
-    'UCSD':     119,
-    'Berkeley': 107,
+    'UCSD':     7,
+    'Berkeley': 79,
 }
 
 ENGINEERING_KEYWORDS = ["engineering", "computer science"]
