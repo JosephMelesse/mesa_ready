@@ -46,9 +46,16 @@ def get_xsrf_token() -> str:
 
 def api_get(path: str, xsrf: str, params: dict | None = None) -> dict:
     headers = {**BASE_HEADERS, "X-XSRF-TOKEN": xsrf}
-    resp = SESSION.get(f"https://assist.org{path}", headers=headers, params=params)
+    for attempt in range(5):
+        resp = SESSION.get(f"https://assist.org{path}", headers=headers, params=params)
+        if resp.status_code == 429:
+            wait = 2 ** attempt * 5
+            print(f"  Rate limited — waiting {wait}s before retry {attempt + 1}/5...")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        return resp.json()
     resp.raise_for_status()
-    return resp.json()
 
 
 def get_engineering_reports(xsrf: str, uc_id: int) -> list[dict]:
