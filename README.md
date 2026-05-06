@@ -8,8 +8,8 @@ Live site: https://mesaready.up.railway.app
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
-| Backend | Node.js, Express 5, TypeScript (`tsx`) |
+| Frontend | HTML, CSS, vanilla JavaScript |
+| Backend | Node.js, Express 5 |
 | Database | PostgreSQL |
 | Scraper | Python 3, `requests`, `psycopg2` |
 
@@ -23,7 +23,7 @@ Create the PostgreSQL database:
 createdb assist_articulation
 ```
 
-The schema is created automatically by the app on startup or by the scraper on first run.
+The schema is created automatically by the app on startup.
 
 ### 2. Scraper
 
@@ -45,20 +45,20 @@ npm install
 npm run dev
 ```
 
-This concurrently runs the Express API server on port 3001 and the Vite dev server (proxied). Open the URL Vite prints in your terminal.
+The Express server runs on port 3001 and serves the frontend from `public/`. Open `http://localhost:3001` in your browser.
 
 ## Deploy to Railway
 
 1. Go to [railway.app](https://railway.app) and create a new project from this GitHub repo.
 2. Add a **Postgres** plugin — Railway auto-sets `DATABASE_URL`.
-3. Set the build command to `npm run build` and start command to `npm start`.
+3. Set the start command to `npm start`. No build step needed.
 4. Deploy once. On first boot, the app will create the required tables automatically.
 5. Open a Railway shell and seed the database:
    ```bash
    pip install requests psycopg2-binary
    python scraper/scrape_assist.py
    ```
-6. Redeploy or restart the service if needed. The Express server serves both the API and the built frontend.
+6. Redeploy or restart the service if needed.
 
 If you skip step 5, the app will boot, but the majors list will be empty because no articulation data has been loaded yet.
 
