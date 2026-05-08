@@ -1,6 +1,6 @@
 # Mesa Ready
 
-A transfer readiness checker for Cerritos College students applying to UCI engineering and computer science majors. Enter the courses you've taken (or plan to take), pick a target major, and instantly see which ASSIST.org articulation requirements you've met and what's still missing — plus a full Cal-GETC general education breakdown.
+A transfer readiness checker for Cerritos College students applying to UC engineering and computer science majors. Enter the courses you've taken (or plan to take), pick a target major, and instantly see which ASSIST.org articulation requirements you've met and what's still missing — plus a full Cal-GETC general education breakdown.
 
 Live site: https://mesaready.up.railway.app
 
@@ -34,9 +34,36 @@ pip install requests psycopg2-binary
 python scraper/scrape_assist.py
 ```
 
-> The scraper targets the 2025–2026 academic year, pulling all engineering/CS articulation agreements between Cerritos College (ID 104) and UCI (ID 120).
+> The scraper targets the 2025–2026 academic year, pulling all engineering/CS articulation agreements between Cerritos College (ID 104) and UCI, UCLA, UCSD, and Berkeley.
 
-By default the scraper connects via the local Unix socket (`host=/var/run/postgresql`). Edit `DB_DSN` in `scrape_assist.py` if your PostgreSQL setup differs.
+By default the scraper connects via the local Unix socket (`host=/var/run/postgresql`). Set `DATABASE_URL` to override:
+
+```bash
+DATABASE_URL=postgresql://user:pass@host/dbname python scraper/scrape_assist.py
+```
+
+To scrape a single university instead of all four:
+
+```bash
+python scraper/scrape_assist.py --university UCLA
+# choices: UCI, UCLA, UCSD, Berkeley
+```
+
+To look up ASSIST.org institution IDs:
+
+```bash
+python scraper/scrape_assist.py --list-institutions
+```
+
+**Scraper modules**
+
+| File | Responsibility |
+|---|---|
+| `scrape_assist.py` | CLI entry point — argument parsing and top-level orchestration |
+| `config.py` | Constants: institution IDs, academic year, DB DSN, request headers |
+| `api.py` | HTTP session, XSRF auth, all ASSIST.org API calls |
+| `db.py` | Schema creation and all database insert/upsert functions |
+| `scraper.py` | HTML note extraction and per-university scrape loop |
 
 ### 3. App
 
@@ -58,12 +85,13 @@ The Express server runs on port 3001 and serves the frontend from `public/`. Ope
    pip install requests psycopg2-binary
    python scraper/scrape_assist.py
    ```
+   This scrapes all 4 universities (~62 majors). Expect it to take a few minutes due to rate-limit delays between requests.
 6. Redeploy or restart the service if needed.
 
 If you skip step 5, the app will boot, but the majors list will be empty because no articulation data has been loaded yet.
 
 ## How it works
 
-**Transfer Readiness** — select a UCI major, then the app posts your course list to `/api/check-readiness`. The server joins your courses against the articulation data (including former course identifiers) and returns which UCI requirements are satisfied, which are missing, and which have no articulation path.
+**Transfer Readiness** — select a UC major, then the app posts your course list to `/api/check-readiness`. The server joins your courses against the articulation data (including former course identifiers) and returns which UC requirements are satisfied, which are missing, and which have no articulation path.
 
 **Cal-GETC** — posts your course list to `/api/check-calgetc`. The server looks up each course's Cal-GETC areas from the catalog and checks all 11 areas, including the Area 4 cross-discipline rule.
