@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mesa Ready</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <div class="major-selector">
+      <label class="label-muted">Target Major</label>
+      <select id="major-select">
+        <option value="">— select a major —</option>
+      </select>
+    </div>
+
+    <div id="semesters" class="semesters-container"></div>
+
+    <button id="add-semester-btn" class="add-semester-btn">
+      <span>Add Semester</span>
+      <span class="icon-lg">⊕</span>
+    </button>
+
+    <div class="action-buttons">
+      <button id="check-transfer-btn" class="btn-primary" disabled>
+        Check Transfer Readiness
+      </button>
+      <button id="check-calgetc-btn" class="btn-secondary">
+        Check Cal-GETC Readiness
+      </button>
+    </div>
+
+    <div id="results"></div>
+
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
