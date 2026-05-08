@@ -71,7 +71,6 @@ def extract_notes(template_assets: str) -> str | None:
     except Exception:
         return None
 
-
 def get_xsrf_token() -> str:
     SESSION.get("https://assist.org/")
     token = SESSION.cookies.get("X-XSRF-TOKEN")
