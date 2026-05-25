@@ -27,3 +27,7 @@ __pycache__/
 *.njsproj
 *.sln
 *.sw?
+
+# Local planning docs
+how.md
+roadmap.md
