@@ -11,17 +11,8 @@ export async function ensureSchema() {
       scraped_at TIMESTAMPTZ DEFAULT NOW()
     )
   `)
-
-  await pool.query(`
-    ALTER TABLE majors
-      ADD COLUMN IF NOT EXISTS university TEXT NOT NULL DEFAULT 'UCI'
-  `)
-
-  await pool.query(`
-    ALTER TABLE majors
-      ADD COLUMN IF NOT EXISTS template_notes TEXT
-  `)
-
+  await pool.query(`ALTER TABLE majors ADD COLUMN IF NOT EXISTS university TEXT NOT NULL DEFAULT 'UCI'`)
+  await pool.query(`ALTER TABLE majors ADD COLUMN IF NOT EXISTS template_notes TEXT`)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS articulations (
       id SERIAL PRIMARY KEY,
@@ -38,13 +29,11 @@ export async function ensureSchema() {
       raw_json JSONB
     )
   `)
-
   await pool.query(`
     ALTER TABLE articulations
       ADD COLUMN IF NOT EXISTS articulation_type TEXT NOT NULL DEFAULT 'Course',
       ADD COLUMN IF NOT EXISTS uci_series_name TEXT
   `)
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cerritos_course_groups (
       id SERIAL PRIMARY KEY,
@@ -53,7 +42,6 @@ export async function ensureSchema() {
       conjunction TEXT
     )
   `)
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cerritos_courses (
       id SERIAL PRIMARY KEY,
@@ -68,12 +56,7 @@ export async function ensureSchema() {
       position INTEGER
     )
   `)
-
-  await pool.query(`
-    ALTER TABLE cerritos_courses
-      ADD COLUMN IF NOT EXISTS course_identifier_parent_id INTEGER
-  `)
-
+  await pool.query(`ALTER TABLE cerritos_courses ADD COLUMN IF NOT EXISTS course_identifier_parent_id INTEGER`)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS cerritos_catalog (
       id SERIAL PRIMARY KEY,

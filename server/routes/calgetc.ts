@@ -1,12 +1,12 @@
-import { Router } from 'express'
+import { Router, type Request, type Response } from 'express'
 import { pool } from '../db.js'
 import { CAL_GETC_AREAS } from '../constants.js'
 
 const router = Router()
 
-router.post('/check-calgetc', async (req, res) => {
+router.post('/check-calgetc', async (req: Request, res: Response) => {
   try {
-    const { courses } = req.body
+    const { courses } = req.body as { courses: string[] }
     const userKeys = new Set(courses.map((c) => c.trim().toUpperCase()))
 
     if (userKeys.size === 0) {
@@ -26,22 +26,22 @@ router.post('/check-calgetc', async (req, res) => {
         AND calgetc_areas IS NOT NULL
     `, [Array.from(userKeys)])
 
-    const areaMap = new Map()
+    const areaMap = new Map<string, typeof rows>()
     for (const row of rows) {
       for (const area of (row.calgetc_areas ?? [])) {
         if (!areaMap.has(area)) areaMap.set(area, [])
-        areaMap.get(area).push(row)
+        areaMap.get(area)!.push(row)
       }
     }
 
-    const satisfied = []
-    const missing = []
+    const satisfied: object[] = []
+    const missing: object[] = []
 
     for (const requirement of CAL_GETC_AREAS) {
       const covering = areaMap.get(requirement.area) ?? []
       const courseLabels = covering.map((c) => `${c.prefix} ${c.course_number} — ${c.course_title}`)
 
-      let note = null
+      let note: string | null = null
       let ok = covering.length >= requirement.minCourses
 
       if (ok && requirement.crossDiscipline) {

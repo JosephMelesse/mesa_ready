@@ -1,4 +1,11 @@
-export const CAL_GETC_AREAS = [
+export interface CalGetcArea {
+  area: string
+  name: string
+  minCourses: number
+  crossDiscipline?: boolean
+}
+
+export const CAL_GETC_AREAS: CalGetcArea[] = [
   { area: '1A', name: 'English Composition',             minCourses: 1 },
   { area: '1B', name: 'Critical Thinking & Composition', minCourses: 1 },
   { area: '1C', name: 'Oral Communication',              minCourses: 1 },

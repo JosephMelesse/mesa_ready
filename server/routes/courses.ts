@@ -1,9 +1,9 @@
-import { Router } from 'express'
+import { Router, type Request, type Response } from 'express'
 import { pool } from '../db.js'
 
 const router = Router()
 
-router.get('/cerritos-courses', async (_req, res) => {
+router.get('/cerritos-courses', async (_req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`
       SELECT

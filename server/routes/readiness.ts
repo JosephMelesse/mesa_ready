@@ -1,15 +1,59 @@
-import { Router } from 'express'
+import { Router, type Request, type Response } from 'express'
 import { pool } from '../db.js'
+
+interface CourseRow {
+  prefix: string
+  course_number: string
+  min_units: string
+  former_identifiers: string[] | null
+}
+
+interface ArticulationRow {
+  art_id: number
+  articulation_type: string
+  uci_course_prefix: string | null
+  uci_course_number: string | null
+  uci_course_title: string | null
+  uci_series_name: string | null
+  uci_min_units: string | null
+  no_articulation_reason: string | null
+  group_id: number | null
+  conjunction: string
+  course_prefix: string | null
+  course_number: string | null
+  course_title: string | null
+}
+
+interface CerritosCourse {
+  prefix: string
+  number: string
+  title: string
+  key: string
+}
+
+interface ArtGroup {
+  conjunction: string
+  courses: CerritosCourse[]
+}
+
+interface ArtEntry {
+  artType: string
+  uciCourse: string
+  uciTitle: string
+  uciUnits: number | null
+  noArticulationReason: string | null
+  groups: Map<number, ArtGroup>
+}
 
 const router = Router()
 
-router.post('/check-readiness', async (req, res) => {
+router.post('/check-readiness', async (req: Request, res: Response) => {
   try {
-    const { majorId, courses } = req.body
+    const { majorId, courses } = req.body as { majorId: number; courses: string[] }
 
     const userCourseKeys = new Set(courses.map((c) => c.trim().toUpperCase()))
 
-    const { rows: catalogRows } = await pool.query(`
+    const { rows: catalogRows } = await pool.query<CourseRow>(`
       SELECT prefix, course_number, min_units, former_identifiers
       FROM cerritos_catalog
       WHERE UPPER(prefix || ' ' || course_number) = ANY($1)
@@ -18,7 +62,7 @@ router.post('/check-readiness', async (req, res) => {
          )
     `, [Array.from(userCourseKeys)])
 
-    const unitMap = new Map()
+    const unitMap = new Map<string, number>()
     for (const row of catalogRows) {
       const key = `${row.prefix} ${row.course_number}`.toUpperCase()
       unitMap.set(key, Number(row.min_units))
@@ -36,7 +80,7 @@ router.post('/check-readiness', async (req, res) => {
       expandedKeys.add(`${row.prefix} ${row.course_number}`.toUpperCase())
     }
 
-    const { rows } = await pool.query(`
+    const { rows } = await pool.query<ArticulationRow>(`
       SELECT
         a.id                    AS art_id,
         a.articulation_type,
@@ -59,7 +103,7 @@ router.post('/check-readiness', async (req, res) => {
       ORDER BY a.id, g.group_position, cc.position
     `, [majorId])
 
-    const artMap = new Map()
+    const artMap = new Map<number, ArtEntry>()
 
     for (const row of rows) {
       if (!artMap.has(row.art_id)) {
@@ -77,25 +121,25 @@ router.post('/check-readiness', async (req, res) => {
           groups: new Map(),
         })
       }
-      const art = artMap.get(row.art_id)
+      const art = artMap.get(row.art_id)!
       if (row.group_id) {
         if (!art.groups.has(row.group_id)) {
           art.groups.set(row.group_id, { conjunction: row.conjunction, courses: [] })
         }
         if (row.course_prefix) {
-          art.groups.get(row.group_id).courses.push({
+          art.groups.get(row.group_id)!.courses.push({
             prefix: row.course_prefix,
-            number: row.course_number,
-            title: row.course_title,
+            number: row.course_number!,
+            title: row.course_title!,
             key: `${row.course_prefix} ${row.course_number}`.toUpperCase(),
           })
         }
       }
     }
 
-    const satisfied = []
-    const missing = []
-    const noArticulation = []
+    const satisfied: object[] = []
+    const missing: object[] = []
+    const noArticulation: object[] = []
 
     for (const art of artMap.values()) {
       if (art.noArticulationReason) {
@@ -103,7 +147,7 @@ router.post('/check-readiness', async (req, res) => {
         continue
       }
 
-      let satisfiedGroup = null
+      let satisfiedGroup: ArtGroup | null = null
       for (const group of art.groups.values()) {
         const ok = group.conjunction === 'And'
           ? group.courses.every((c) => expandedKeys.has(c.key))
@@ -121,7 +165,7 @@ router.post('/check-readiness', async (req, res) => {
             .map((c) => `${c.prefix} ${c.number} — ${c.title}`),
         })
       } else {
-        const options = []
+        const options: string[] = []
         for (const group of art.groups.values()) {
           const sep = group.conjunction === 'And' ? ' + ' : ' or '
           options.push(group.courses.map((c) => `${c.prefix} ${c.number}`).join(sep))

@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #2e2e2e;
+  color: #fbbf24;
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+select option {
+  background: #3a3a3a;
+  color: #fbbf24;
+}
+
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}

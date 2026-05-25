@@ -1,9 +1,9 @@
-import { Router } from 'express'
+import { Router, type Request, type Response } from 'express'
 import { pool } from '../db.js'
 
 const router = Router()
 
-router.get('/majors', async (req, res) => {
+router.get('/majors', async (req: Request, res: Response) => {
   try {
     const { university } = req.query
     const { rows } = await pool.query(
@@ -16,7 +16,7 @@ router.get('/majors', async (req, res) => {
   }
 })
 
-router.get('/major-notes/:id', async (req, res) => {
+router.get('/major-notes/:id', async (req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(
       'SELECT template_notes FROM majors WHERE id = $1',
