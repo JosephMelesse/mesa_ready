@@ -8,8 +8,8 @@ Live site: https://mesaready.up.railway.app
 
 | Layer | Tech |
 |---|---|
-| Frontend | HTML, CSS, vanilla JavaScript |
-| Backend | Node.js, Express 5 |
+| Frontend | React 19, TypeScript, Tailwind CSS, Vite |
+| Backend | Node.js, Express 5, TypeScript |
 | Database | PostgreSQL |
 | Scraper | Python 3, `requests`, `psycopg2` |
 
@@ -72,13 +72,22 @@ npm install
 npm run dev
 ```
 
-The Express server runs on port 3001 and serves the frontend from `public/`. Open `http://localhost:3001` in your browser.
+This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser.
+
+For production, build the client first:
+
+```bash
+npm run build
+npm start
+```
+
+The built client is served statically from `client/dist/` by Express.
 
 ## Deploy to Railway
 
 1. Go to [railway.app](https://railway.app) and create a new project from this GitHub repo.
 2. Add a **Postgres** plugin — Railway auto-sets `DATABASE_URL`.
-3. Set the start command to `npm start`. No build step needed.
+3. Set the start command to `npm start`.
 4. Deploy once. On first boot, the app will create the required tables automatically.
 5. Open a Railway shell and seed the database:
    ```bash
