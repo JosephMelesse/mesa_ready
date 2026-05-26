@@ -17,7 +17,7 @@ app.use('/api', calgetcRouter)
 if (process.env.NODE_ENV === 'production') {
   const clientDist = path.join(process.cwd(), 'client/dist')
   app.use(express.static(clientDist))
-  app.get('*', (_req, res) => {
+  app.get('/{*path}', (_req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'))
   })
 }
