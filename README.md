@@ -2,7 +2,7 @@
 
 A transfer readiness checker for Cerritos College students applying to UC engineering and computer science majors. Enter the courses you've taken (or plan to take), pick a target major, and instantly see which ASSIST.org articulation requirements you've met and what's still missing — plus a full Cal-GETC general education breakdown.
 
-> **Deployment in progress** — migrating hosting to Netlify (client) + Render (server). A live URL will be added here once the deploy is finalized.
+**Live at [mesaready.up.railway.app](https://mesaready.up.railway.app)** — hosted on Railway.
 
 ## Stack
 
@@ -13,7 +13,7 @@ A transfer readiness checker for Cerritos College students applying to UC engine
 | Database | SQLite (`better-sqlite3`) |
 | Scraper | Python 3, `requests`, `sqlite3` (stdlib) |
 
-The whole database is a single SQLite file. Locally it lives at `assist.db` in the repo root; both the server and the scraper read it from there. Override the location with the `DATABASE_PATH` environment variable (used in deployment).
+The whole database is a single SQLite file. Locally it lives at `assist.db` in the repo root; both the server and the scraper read it from there. Override the location with the `DATABASE_PATH` environment variable if needed. In deployment the file ships alongside the app, so no override is required.
 
 ## Setup
 
@@ -57,7 +57,7 @@ python scraper/scrape_assist.py --list-institutions
 | `config.py` | Constants: institution IDs, academic year, DB path, request headers |
 | `api.py` | HTTP session, XSRF auth, all ASSIST.org API calls |
 | `db.py` | Schema creation and all database insert/upsert functions |
-| `scraper.py` | HTML note extraction and per-university scrape loop |
+| `scraper.py` | Per-university scrape loop |
 
 ### 2. App
 
@@ -77,19 +77,24 @@ npm start
 
 The built client is served statically from `client/dist/` by Express.
 
-## Deploy (in progress)
+## Deploy
 
-Target hosting is **Netlify** for the client and **Render** for the server.
+The app runs as a single **Railway** service: Express serves both the API and the built client. `railway.toml` defines the build (`npm --prefix client ci && npm --prefix client run build`) and start (`npm start`) commands.
 
-- **Client (Netlify):** build `client/` and deploy the static `client/dist/` output. Point API requests at the Render service URL.
-- **Server (Render):** deploy as a Node web service with start command `npm start`.
-  - Render's filesystem is **ephemeral**, so attach a **persistent disk** and set `DATABASE_PATH` to a file on that disk (e.g. `/data/assist.db`). Without this, the database is wiped on every redeploy.
-  - Seed the database from a shell on the service:
-    ```bash
-    pip install requests
-    DATABASE_PATH=/data/assist.db python scraper/scrape_assist.py
-    ```
-    This scrapes all 4 universities (~62 majors). Expect a few minutes due to rate-limit delays between requests.
+```bash
+railway up
+```
+
+This uploads the working tree — **including `assist.db`** (explicitly un-ignored in `.gitignore`) — builds the client, and deploys. No separate database service is needed; the SQLite file ships inside the deploy.
+
+Because Railway's filesystem is ephemeral, the database resets to the uploaded snapshot on every deploy. That's by design: the data is read-only reference data. To refresh it, re-run the scraper locally and deploy again:
+
+```bash
+python scraper/scrape_assist.py
+railway up
+```
+
+The service is also linked to this GitHub repo, so pushes to `master` trigger a deploy built from the repo — which means `assist.db` must be committed for git-triggered deploys to ship data.
 
 If the database is empty, the app still boots, but the majors list will be empty until the scraper has run.
 
