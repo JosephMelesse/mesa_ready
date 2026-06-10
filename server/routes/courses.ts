@@ -18,7 +18,11 @@ router.get('/cerritos-courses', async (_req: Request, res: Response) => {
       FROM cerritos_catalog
       ORDER BY prefix, course_number
     `)
-    res.json(rows)
+    const parsed = rows.map((row: any) => ({
+      ...row,
+      former_identifiers: row.former_identifiers ? JSON.parse(row.former_identifiers) : null,
+    }))
+    res.json(parsed)
   } catch (e) {
     res.status(500).json({ error: String(e) })
   }

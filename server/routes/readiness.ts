@@ -5,7 +5,7 @@ interface CourseRow {
   prefix: string
   course_number: string
   min_units: string
-  former_identifiers: string[] | null
+  former_identifiers: string | null
 }
 
 interface ArticulationRow {
@@ -52,21 +52,29 @@ router.post('/check-readiness', async (req: Request, res: Response) => {
     const { majorId, courses } = req.body as { majorId: number; courses: string[] }
 
     const userCourseKeys = new Set(courses.map((c) => c.trim().toUpperCase()))
+    const keys = Array.from(userCourseKeys)
 
-    const { rows: catalogRows } = await pool.query<CourseRow>(`
-      SELECT prefix, course_number, min_units, former_identifiers
-      FROM cerritos_catalog
-      WHERE UPPER(prefix || ' ' || course_number) = ANY($1)
-         OR EXISTS (
-           SELECT 1 FROM unnest(former_identifiers) fi WHERE UPPER(fi) = ANY($1)
-         )
-    `, [Array.from(userCourseKeys)])
+    let catalogRows: CourseRow[] = []
+    if (keys.length > 0) {
+      const ph = keys.map(() => '?').join(', ')
+      const result = await pool.query<CourseRow>(`
+        SELECT prefix, course_number, min_units, former_identifiers
+        FROM cerritos_catalog
+        WHERE UPPER(prefix || ' ' || course_number) IN (${ph})
+           OR EXISTS (
+             SELECT 1 FROM json_each(coalesce(former_identifiers, '[]')) je
+             WHERE UPPER(je.value) IN (${ph})
+           )
+      `, [...keys, ...keys])
+      catalogRows = result.rows
+    }
 
     const unitMap = new Map<string, number>()
     for (const row of catalogRows) {
       const key = `${row.prefix} ${row.course_number}`.toUpperCase()
       unitMap.set(key, Number(row.min_units))
-      for (const former of (row.former_identifiers ?? [])) {
+      const formers: string[] = row.former_identifiers ? JSON.parse(row.former_identifiers) : []
+      for (const former of formers) {
         unitMap.set(former.toUpperCase(), Number(row.min_units))
       }
     }
@@ -99,7 +107,7 @@ router.post('/check-readiness', async (req: Request, res: Response) => {
       FROM articulations a
       LEFT JOIN cerritos_course_groups g ON g.articulation_id = a.id
       LEFT JOIN cerritos_courses cc ON cc.group_id = g.id
-      WHERE a.major_id = $1
+      WHERE a.major_id = ?
       ORDER BY a.id, g.group_position, cc.position
     `, [majorId])
 

@@ -6,9 +6,9 @@ for engineering-related majors, plus the full UC-transferable Cerritos catalog.
 
 import argparse
 import time
-import psycopg2
+import sqlite3
 
-from config import UC_CAMPUSES, DB_DSN
+from config import UC_CAMPUSES, DB_PATH
 from api import get_xsrf_token, api_get, fetch_uc_transferable_catalog
 from db import create_schema, upsert_catalog
 from scraper import scrape_university
@@ -54,7 +54,8 @@ def main():
     print(f"  {len(catalog)} courses found")
 
     print("\nConnecting to database...")
-    conn = psycopg2.connect(DB_DSN)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     create_schema(conn)
 
     print("\nPopulating cerritos_catalog...")
@@ -71,11 +72,10 @@ def main():
     conn.close()
 
     print("\nDone. Row counts:")
-    conn = psycopg2.connect(DB_DSN)
-    with conn.cursor() as cur:
-        for table in ("majors", "articulations", "cerritos_course_groups", "cerritos_courses", "cerritos_catalog"):
-            cur.execute(f"SELECT COUNT(*) FROM {table}")
-            print(f"  {table}: {cur.fetchone()[0]}")
+    conn = sqlite3.connect(DB_PATH)
+    for table in ("majors", "articulations", "cerritos_course_groups", "cerritos_courses", "cerritos_catalog"):
+        count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        print(f"  {table}: {count}")
     conn.close()
 
 

@@ -17,18 +17,21 @@ router.post('/check-calgetc', async (req: Request, res: Response) => {
       return res.json({ ready: false, missing, satisfied: [] })
     }
 
+    const keys = Array.from(userKeys)
+    const ph = keys.map(() => '?').join(', ')
     const { rows } = await pool.query(`
       SELECT prefix, course_number, course_title, department, min_units,
              calgetc_areas, former_identifiers
       FROM cerritos_catalog
-      WHERE (UPPER(prefix || ' ' || course_number) = ANY($1)
-          OR EXISTS (SELECT 1 FROM unnest(former_identifiers) fi WHERE UPPER(fi) = ANY($1)))
+      WHERE (UPPER(prefix || ' ' || course_number) IN (${ph})
+          OR EXISTS (SELECT 1 FROM json_each(coalesce(former_identifiers, '[]')) je WHERE UPPER(je.value) IN (${ph})))
         AND calgetc_areas IS NOT NULL
-    `, [Array.from(userKeys)])
+    `, [...keys, ...keys])
 
     const areaMap = new Map<string, typeof rows>()
     for (const row of rows) {
-      for (const area of (row.calgetc_areas ?? [])) {
+      const areas: string[] = row.calgetc_areas ? JSON.parse(row.calgetc_areas) : []
+      for (const area of areas) {
         if (!areaMap.has(area)) areaMap.set(area, [])
         areaMap.get(area)!.push(row)
       }

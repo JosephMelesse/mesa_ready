@@ -1,17 +1,23 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@theme {
+  --color-charcoal: #2e2e2e;
+  --color-surface: #3a3a3a;
+  --color-accent: #fbbf24;
+  --color-good: #4ade80;
+  --color-bad: #f87171;
+}
 
 body {
-  background-color: #2e2e2e;
-  color: #fbbf24;
+  background-color: var(--color-charcoal);
+  color: var(--color-accent);
   font-family: system-ui, sans-serif;
   min-height: 100vh;
 }
 
 select option {
-  background: #3a3a3a;
-  color: #fbbf24;
+  background: var(--color-surface);
+  color: var(--color-accent);
 }
 
 details > summary {

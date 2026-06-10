@@ -2,7 +2,7 @@
 
 A transfer readiness checker for Cerritos College students applying to UC engineering and computer science majors. Enter the courses you've taken (or plan to take), pick a target major, and instantly see which ASSIST.org articulation requirements you've met and what's still missing — plus a full Cal-GETC general education breakdown.
 
-Live site: https://mesaready.up.railway.app
+> **Deployment in progress** — migrating hosting to Netlify (client) + Render (server). A live URL will be added here once the deploy is finalized.
 
 ## Stack
 
@@ -10,36 +10,30 @@ Live site: https://mesaready.up.railway.app
 |---|---|
 | Frontend | React 19, TypeScript, Tailwind CSS, Vite |
 | Backend | Node.js, Express 5, TypeScript |
-| Database | PostgreSQL |
-| Scraper | Python 3, `requests`, `psycopg2` |
+| Database | SQLite (`better-sqlite3`) |
+| Scraper | Python 3, `requests`, `sqlite3` (stdlib) |
+
+The whole database is a single SQLite file. Locally it lives at `assist.db` in the repo root; both the server and the scraper read it from there. Override the location with the `DATABASE_PATH` environment variable (used in deployment).
 
 ## Setup
 
-### 1. Database
-
-Create the PostgreSQL database:
-
-```bash
-createdb assist_articulation
-```
-
-The schema is created automatically by the app on startup.
-
-### 2. Scraper
+### 1. Scraper
 
 Install Python dependencies and populate the database from ASSIST.org:
 
 ```bash
-pip install requests psycopg2-binary
+pip install requests
 python scraper/scrape_assist.py
 ```
 
+This creates `assist.db` (if it doesn't exist) and fills it. The schema is created automatically — there's no separate database to provision.
+
 > The scraper targets the 2025–2026 academic year, pulling all engineering/CS articulation agreements between Cerritos College (ID 104) and UCI, UCLA, UCSD, and Berkeley.
 
-By default the scraper connects via the local Unix socket (`host=/var/run/postgresql`). Set `DATABASE_URL` to override:
+To write the database somewhere other than the repo root, set `DATABASE_PATH`:
 
 ```bash
-DATABASE_URL=postgresql://user:pass@host/dbname python scraper/scrape_assist.py
+DATABASE_PATH=/path/to/assist.db python scraper/scrape_assist.py
 ```
 
 To scrape a single university instead of all four:
@@ -60,19 +54,19 @@ python scraper/scrape_assist.py --list-institutions
 | File | Responsibility |
 |---|---|
 | `scrape_assist.py` | CLI entry point — argument parsing and top-level orchestration |
-| `config.py` | Constants: institution IDs, academic year, DB DSN, request headers |
+| `config.py` | Constants: institution IDs, academic year, DB path, request headers |
 | `api.py` | HTTP session, XSRF auth, all ASSIST.org API calls |
 | `db.py` | Schema creation and all database insert/upsert functions |
 | `scraper.py` | HTML note extraction and per-university scrape loop |
 
-### 3. App
+### 2. App
 
 ```bash
 npm install
 npm run dev
 ```
 
-This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser.
+This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser. The server reads the same `assist.db` the scraper wrote (set `DATABASE_PATH` if you put it elsewhere).
 
 For production, build the client first:
 
@@ -83,21 +77,21 @@ npm start
 
 The built client is served statically from `client/dist/` by Express.
 
-## Deploy to Railway
+## Deploy (in progress)
 
-1. Go to [railway.app](https://railway.app) and create a new project from this GitHub repo.
-2. Add a **Postgres** plugin — Railway auto-sets `DATABASE_URL`.
-3. Set the start command to `npm start`.
-4. Deploy once. On first boot, the app will create the required tables automatically.
-5. Open a Railway shell and seed the database:
-   ```bash
-   pip install requests psycopg2-binary
-   python scraper/scrape_assist.py
-   ```
-   This scrapes all 4 universities (~62 majors). Expect it to take a few minutes due to rate-limit delays between requests.
-6. Redeploy or restart the service if needed.
+Target hosting is **Netlify** for the client and **Render** for the server.
 
-If you skip step 5, the app will boot, but the majors list will be empty because no articulation data has been loaded yet.
+- **Client (Netlify):** build `client/` and deploy the static `client/dist/` output. Point API requests at the Render service URL.
+- **Server (Render):** deploy as a Node web service with start command `npm start`.
+  - Render's filesystem is **ephemeral**, so attach a **persistent disk** and set `DATABASE_PATH` to a file on that disk (e.g. `/data/assist.db`). Without this, the database is wiped on every redeploy.
+  - Seed the database from a shell on the service:
+    ```bash
+    pip install requests
+    DATABASE_PATH=/data/assist.db python scraper/scrape_assist.py
+    ```
+    This scrapes all 4 universities (~62 majors). Expect a few minutes due to rate-limit delays between requests.
+
+If the database is empty, the app still boots, but the majors list will be empty until the scraper has run.
 
 ## How it works
 

@@ -1,5 +1,6 @@
 import time
 import requests
+
 from config import BASE_HEADERS, CERRITOS_ID, ACADEMIC_YEAR_ID, ENGINEERING_KEYWORDS
 
 SESSION = requests.Session()

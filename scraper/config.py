@@ -13,7 +13,12 @@ UC_CAMPUSES = {
 
 ENGINEERING_KEYWORDS = ["engineering", "computer science"]
 
-DB_DSN = os.getenv("DATABASE_URL", "dbname=assist_articulation host=/var/run/postgresql")
+# Shared SQLite file in the repo root (one level up from scraper/).
+# Override with DATABASE_PATH to point at the same file the server uses.
+DB_PATH = os.getenv(
+    "DATABASE_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "assist.db"),
+)
 
 BASE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

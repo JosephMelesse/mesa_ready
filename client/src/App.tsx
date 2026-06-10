@@ -1,25 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Major, CatalogCourse, Semester, SemesterClass, CheckResult } from './types'
-import { fetchMajors, fetchCatalog, fetchMajorNotes, checkReadiness, checkCalGetc } from './api'
+import { useState, useEffect } from 'react'
+import type { Major, CatalogCourse, Semester, CheckResult } from './types'
+import { fetchMajors, fetchCatalog, checkReadiness, checkCalGetc } from './api'
+import { genId } from './lib/utils'
 import UniversitySelector from './components/UniversitySelector'
 import MajorSelector from './components/MajorSelector'
-import MajorNotes from './components/MajorNotes'
 import SemesterCard from './components/SemesterCard'
 import TransferResults from './components/TransferResults'
 import CalGetcGrid from './components/CalGetcGrid'
 
-let nextId = 1
-const genId = () => nextId++
-
-function makeDefaultSemester(): Semester {
-  return {
-    id: genId(),
-    name: 'Semester 1',
-    classes: [
-      { id: genId(), value: '' },
-      { id: genId(), value: '' },
-    ],
-  }
+function makeSemester(name: string): Semester {
+  return { id: genId(), name, classes: [{ id: genId(), value: '' }] }
 }
 
 export default function App() {
@@ -27,11 +17,9 @@ export default function App() {
   const [allMajors, setAllMajors] = useState<Major[]>([])
   const [selectedUniversity, setSelectedUniversity] = useState('')
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null)
-  const [majorNotes, setMajorNotes] = useState<string | null>(null)
-  const [semesters, setSemesters] = useState<Semester[]>([makeDefaultSemester()])
+  const [semesters, setSemesters] = useState<Semester[]>([makeSemester('Semester 1')])
   const [result, setResult] = useState<CheckResult | null>(null)
-  const [loadingTransfer, setLoadingTransfer] = useState(false)
-  const [loadingCalGetc, setLoadingCalGetc] = useState(false)
+  const [checking, setChecking] = useState<CheckResult['type'] | null>(null)
 
   useEffect(() => {
     Promise.all([fetchMajors(), fetchCatalog()]).then(([majors, cat]) => {
@@ -42,86 +30,40 @@ export default function App() {
 
   const filteredMajors = allMajors.filter((m) => m.university === selectedUniversity)
 
-  const getCourses = useCallback(
-    () => semesters.flatMap((s) => s.classes.map((c) => c.value)).filter(Boolean),
-    [semesters]
-  )
-
   function handleUniversityChange(university: string) {
     setSelectedUniversity(university)
     setSelectedMajorId(null)
-    setMajorNotes(null)
     setResult(null)
   }
 
-  async function handleMajorChange(majorId: number | null) {
+  function handleMajorChange(majorId: number | null) {
     setSelectedMajorId(majorId)
     setResult(null)
-    if (majorId) {
-      const notes = await fetchMajorNotes(majorId)
-      setMajorNotes(notes)
-    } else {
-      setMajorNotes(null)
-    }
   }
 
-  function handleUpdateName(semId: number, name: string) {
-    setSemesters((prev) => prev.map((s) => (s.id === semId ? { ...s, name } : s)))
-  }
-
-  function handleCourseChange(semId: number, classId: number, value: string) {
-    setSemesters((prev) =>
-      prev.map((s) =>
-        s.id === semId
-          ? { ...s, classes: s.classes.map((c) => (c.id === classId ? { ...c, value } : c)) }
-          : s
-      )
-    )
+  function handleSemesterChange(updated: Semester) {
+    setSemesters((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
     setResult(null)
   }
 
-  function handleAddClass(semId: number) {
-    const newClass: SemesterClass = { id: genId(), value: '' }
-    setSemesters((prev) =>
-      prev.map((s) => (s.id === semId ? { ...s, classes: [...s.classes, newClass] } : s))
-    )
-  }
-
-  function handleAddSemester() {
-    const newSem: Semester = {
-      id: genId(),
-      name: `Semester ${semesters.length + 1}`,
-      classes: [],
-    }
-    setSemesters((prev) => [...prev, newSem])
-  }
-
-  async function handleCheckTransfer() {
-    if (!selectedMajorId) return
-    setLoadingTransfer(true)
+  async function runCheck(type: CheckResult['type']) {
+    setChecking(type)
     setResult(null)
     try {
-      const data = await checkReadiness(selectedMajorId, getCourses())
-      setResult({ type: 'transfer', data })
+      const courses = semesters.flatMap((s) => s.classes.map((c) => c.value)).filter(Boolean)
+      if (type === 'transfer') {
+        if (!selectedMajorId) return
+        setResult({ type, data: await checkReadiness(selectedMajorId, courses) })
+      } else {
+        setResult({ type, data: await checkCalGetc(courses) })
+      }
     } finally {
-      setLoadingTransfer(false)
-    }
-  }
-
-  async function handleCheckCalGetc() {
-    setLoadingCalGetc(true)
-    setResult(null)
-    try {
-      const data = await checkCalGetc(getCourses())
-      setResult({ type: 'calgetc', data })
-    } finally {
-      setLoadingCalGetc(false)
+      setChecking(null)
     }
   }
 
   return (
-    <div className="flex flex-col items-center py-10 px-6 gap-8">
-
+    <div className="flex flex-col items-center gap-8 px-6 py-10">
       <UniversitySelector value={selectedUniversity} onChange={handleUniversityChange} />
 
       <MajorSelector
@@ -131,27 +73,17 @@ export default function App() {
         onChange={handleMajorChange}
       />
 
-      <MajorNotes notes={majorNotes} />
-
-      <div className="flex flex-wrap gap-6 justify-center">
+<div className="flex flex-wrap justify-center gap-6">
         {semesters.map((sem) => (
-          <SemesterCard
-            key={sem.id}
-            semester={sem}
-            catalog={catalog}
-            onUpdateName={(name) => handleUpdateName(sem.id, name)}
-            onCourseChange={(classId, value) => handleCourseChange(sem.id, classId, value)}
-            onAddClass={() => handleAddClass(sem.id)}
-          />
+          <SemesterCard key={sem.id} semester={sem} catalog={catalog} onChange={handleSemesterChange} />
         ))}
       </div>
 
       <button
-        className="flex flex-col items-center gap-1 bg-transparent border-none cursor-pointer text-base font-medium transition-colors"
-        style={{ color: '#fbbf24' }}
-        onMouseOver={(e) => ((e.currentTarget as HTMLElement).style.color = '#fcd34d')}
-        onMouseOut={(e) => ((e.currentTarget as HTMLElement).style.color = '#fbbf24')}
-        onClick={handleAddSemester}
+        className="flex cursor-pointer flex-col items-center gap-1 border-none bg-transparent text-base font-medium text-accent transition-colors hover:text-accent/70"
+        onClick={() =>
+          setSemesters((prev) => [...prev, { id: genId(), name: `Semester ${prev.length + 1}`, classes: [] }])
+        }
       >
         <span>Add Semester</span>
         <span className="text-3xl leading-none">⊕</span>
@@ -159,46 +91,24 @@ export default function App() {
 
       <div className="flex flex-col items-center gap-3">
         <button
-          className="w-72 py-3 px-8 rounded-2xl font-bold text-base cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{ background: '#fbbf24', color: '#2e2e2e' }}
-          onMouseOver={(e) => {
-            if (!(e.currentTarget as HTMLButtonElement).disabled)
-              (e.currentTarget as HTMLElement).style.background = '#fcd34d'
-          }}
-          onMouseOut={(e) => ((e.currentTarget as HTMLElement).style.background = '#fbbf24')}
-          onClick={handleCheckTransfer}
-          disabled={!selectedMajorId || loadingTransfer}
+          className="w-72 cursor-pointer rounded-2xl border-none bg-accent px-8 py-3 text-base font-bold text-charcoal transition-colors enabled:hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-30"
+          onClick={() => runCheck('transfer')}
+          disabled={!selectedMajorId || checking !== null}
         >
-          {loadingTransfer ? 'Checking…' : 'Check Transfer Readiness'}
+          {checking === 'transfer' ? 'Checking…' : 'Check Transfer Readiness'}
         </button>
 
         <button
-          className="w-72 py-3 px-8 rounded-2xl font-bold text-base cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          style={{
-            background: '#3a3a3a',
-            color: '#fbbf24',
-            border: '1px solid rgba(251,191,36,0.3)',
-          }}
-          onMouseOver={(e) => {
-            if (!(e.currentTarget as HTMLButtonElement).disabled) {
-              (e.currentTarget as HTMLElement).style.background = '#444'
-              ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(251,191,36,0.6)'
-            }
-          }}
-          onMouseOut={(e) => {
-            ;(e.currentTarget as HTMLElement).style.background = '#3a3a3a'
-            ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(251,191,36,0.3)'
-          }}
-          onClick={handleCheckCalGetc}
-          disabled={loadingCalGetc}
+          className="w-72 cursor-pointer rounded-2xl border border-accent/30 bg-surface px-8 py-3 text-base font-bold text-accent transition-colors enabled:hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-30"
+          onClick={() => runCheck('calgetc')}
+          disabled={checking !== null}
         >
-          {loadingCalGetc ? 'Checking…' : 'Check Cal-GETC Readiness'}
+          {checking === 'calgetc' ? 'Checking…' : 'Check Cal-GETC Readiness'}
         </button>
       </div>
 
       {result?.type === 'transfer' && <TransferResults result={result.data} />}
       {result?.type === 'calgetc' && <CalGetcGrid result={result.data} />}
-
     </div>
   )
 }

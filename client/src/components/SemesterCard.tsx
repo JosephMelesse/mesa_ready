@@ -1,36 +1,20 @@
 import type { Semester, CatalogCourse } from '../types'
 import CourseInput from './CourseInput'
+import { genId } from '../lib/utils'
 
 interface Props {
   semester: Semester
   catalog: CatalogCourse[]
-  onUpdateName: (name: string) => void
-  onCourseChange: (classId: number, value: string) => void
-  onAddClass: () => void
+  onChange: (semester: Semester) => void
 }
 
-export default function SemesterCard({
-  semester,
-  catalog,
-  onUpdateName,
-  onCourseChange,
-  onAddClass,
-}: Props) {
+export default function SemesterCard({ semester, catalog, onChange }: Props) {
   return (
-    <div
-      className="rounded-2xl p-6 w-80 flex flex-col gap-3"
-      style={{ background: '#3a3a3a' }}
-    >
+    <div className="flex w-80 flex-col gap-3 rounded-2xl bg-surface p-6">
       <input
-        className="bg-transparent border-b border-transparent text-xl font-semibold pb-1 outline-none w-full transition-colors"
-        style={{
-          color: '#fbbf24',
-          borderBottomColor: 'transparent',
-        }}
+        className="w-full border-none bg-transparent pb-1 text-xl font-semibold text-accent outline-none"
         value={semester.name}
-        onChange={(e) => onUpdateName(e.target.value)}
-        onFocus={(e) => ((e.target as HTMLInputElement).style.borderBottomColor = '#fbbf24')}
-        onBlur={(e) => ((e.target as HTMLInputElement).style.borderBottomColor = 'transparent')}
+        onChange={(e) => onChange({ ...semester, name: e.target.value })}
       />
       <div className="flex flex-col gap-2">
         {semester.classes.map((cls) => (
@@ -38,16 +22,18 @@ export default function SemesterCard({
             key={cls.id}
             value={cls.value}
             catalog={catalog}
-            onChange={(val) => onCourseChange(cls.id, val)}
+            onChange={(value) =>
+              onChange({
+                ...semester,
+                classes: semester.classes.map((c) => (c.id === cls.id ? { ...c, value } : c)),
+              })
+            }
           />
         ))}
       </div>
       <button
-        className="flex items-center gap-2 bg-transparent border-none cursor-pointer text-sm mt-1 p-0 transition-colors"
-        style={{ color: '#fbbf24' }}
-        onMouseOver={(e) => ((e.currentTarget as HTMLElement).style.color = '#fcd34d')}
-        onMouseOut={(e) => ((e.currentTarget as HTMLElement).style.color = '#fbbf24')}
-        onClick={onAddClass}
+        className="mt-1 flex cursor-pointer items-center gap-2 border-none bg-transparent p-0 text-sm text-accent transition-colors hover:text-accent/70"
+        onClick={() => onChange({ ...semester, classes: [...semester.classes, { id: genId(), value: '' }] })}
       >
         <span className="text-xl leading-none">⊕</span>
         <span>Add Class</span>

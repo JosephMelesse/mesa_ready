@@ -12,13 +12,6 @@ export async function fetchCatalog(): Promise<CatalogCourse[]> {
   return res.json()
 }
 
-export async function fetchMajorNotes(id: number): Promise<string | null> {
-  const res = await fetch(`/api/major-notes/${id}`)
-  if (!res.ok) throw new Error('Failed to fetch major notes')
-  const data = await res.json()
-  return data.notes ?? null
-}
-
 export async function checkReadiness(majorId: number, courses: string[]): Promise<TransferResult> {
   const res = await fetch('/api/check-readiness', {
     method: 'POST',
