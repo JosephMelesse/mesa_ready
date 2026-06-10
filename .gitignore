@@ -9,8 +9,9 @@ lerna-debug.log*
 
 node_modules
 
-# SQLite database (local data)
+# SQLite databases, except the app's data file (deployed with the app)
 *.db
+!assist.db
 *.db-shm
 *.db-wal
 
