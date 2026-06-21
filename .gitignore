@@ -9,12 +9,6 @@ lerna-debug.log*
 
 node_modules
 
-# SQLite databases, except the app's data file (deployed with the app)
-*.db
-!assist.db
-*.db-shm
-*.db-wal
-
 # Python
 __pycache__/
 *.pyc
@@ -40,3 +34,6 @@ how.md
 roadmap.md
 everything.md
 Pasted image.png
+
+# Python virtualenv
+.venv/

@@ -6,11 +6,10 @@ for engineering-related majors, plus the full UC-transferable Cerritos catalog.
 
 import argparse
 import time
-import sqlite3
 
-from config import UC_CAMPUSES, DB_PATH
+from config import UC_CAMPUSES, MONGODB_URI, MONGODB_DB
 from api import get_xsrf_token, api_get, fetch_uc_transferable_catalog
-from db import create_schema, upsert_catalog
+from db import get_db, create_schema, upsert_catalog
 from scraper import scrape_university
 
 
@@ -53,30 +52,24 @@ def main():
     catalog = fetch_uc_transferable_catalog(xsrf)
     print(f"  {len(catalog)} courses found")
 
-    print("\nConnecting to database...")
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
-    create_schema(conn)
+    print(f"\nConnecting to MongoDB at {MONGODB_URI} (db: {MONGODB_DB})...")
+    db = get_db()
+    create_schema(db)
 
     print("\nPopulating cerritos_catalog...")
-    upsert_catalog(conn, catalog)
+    upsert_catalog(db, catalog)
     print("  Done")
 
     unis = list(targets.items())
     for i, (uni_name, uc_id) in enumerate(unis):
-        scrape_university(conn, xsrf, uni_name, uc_id)
+        scrape_university(db, xsrf, uni_name, uc_id)
         if i < len(unis) - 1:
             print("\nPausing 30s between universities to avoid rate limits...")
             time.sleep(30)
 
-    conn.close()
-
-    print("\nDone. Row counts:")
-    conn = sqlite3.connect(DB_PATH)
-    for table in ("majors", "articulations", "cerritos_course_groups", "cerritos_courses", "cerritos_catalog"):
-        count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-        print(f"  {table}: {count}")
-    conn.close()
+    print("\nDone. Document counts:")
+    for coll in ("majors", "articulations", "cerritos_catalog"):
+        print(f"  {coll}: {db[coll].count_documents({})}")
 
 
 if __name__ == "__main__":

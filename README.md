@@ -10,10 +10,10 @@ A transfer readiness checker for Cerritos College students applying to UC engine
 |---|---|
 | Frontend | React 19, TypeScript, Tailwind CSS, Vite |
 | Backend | Node.js, Express 5, TypeScript |
-| Database | SQLite (`better-sqlite3`) |
-| Scraper | Python 3, `requests`, `sqlite3` (stdlib) |
+| Database | MongoDB (`mongodb` driver) |
+| Scraper | Python 3, `requests`, `pymongo` |
 
-The whole database is a single SQLite file. Locally it lives at `assist.db` in the repo root; both the server and the scraper read it from there. Override the location with the `DATABASE_PATH` environment variable if needed. In deployment the file ships alongside the app, so no override is required.
+The database is a MongoDB instance with three collections — `majors`, `articulations` (each embedding its course groups and courses), and `cerritos_catalog`. Both the server and the scraper connect to the same database via the `MONGODB_URI` and `MONGODB_DB` environment variables, which default to `mongodb://localhost:27017` and `assist`.
 
 ## Setup
 
@@ -22,18 +22,18 @@ The whole database is a single SQLite file. Locally it lives at `assist.db` in t
 Install Python dependencies and populate the database from ASSIST.org:
 
 ```bash
-pip install requests
+pip install -r scraper/requirements.txt
 python scraper/scrape_assist.py
 ```
 
-This creates `assist.db` (if it doesn't exist) and fills it. The schema is created automatically — there's no separate database to provision.
+This connects to MongoDB (defaulting to `mongodb://localhost:27017`, database `assist`) and fills it. The indexes are created automatically — there's no separate database to provision beyond a running MongoDB server.
 
 > The scraper targets the 2025–2026 academic year, pulling all engineering/CS articulation agreements between Cerritos College (ID 104) and UCI, UCLA, UCSD, and Berkeley.
 
-To write the database somewhere other than the repo root, set `DATABASE_PATH`:
+To point at a different MongoDB instance (e.g. MongoDB Atlas), set `MONGODB_URI` (and optionally `MONGODB_DB`):
 
 ```bash
-DATABASE_PATH=/path/to/assist.db python scraper/scrape_assist.py
+MONGODB_URI="mongodb+srv://user:pass@cluster.example.mongodb.net" python scraper/scrape_assist.py
 ```
 
 To scrape a single university instead of all four:
@@ -54,7 +54,7 @@ python scraper/scrape_assist.py --list-institutions
 | File | Responsibility |
 |---|---|
 | `scrape_assist.py` | CLI entry point — argument parsing and top-level orchestration |
-| `config.py` | Constants: institution IDs, academic year, DB path, request headers |
+| `config.py` | Constants: institution IDs, academic year, MongoDB connection, request headers |
 | `api.py` | HTTP session, XSRF auth, all ASSIST.org API calls |
 | `db.py` | Schema creation and all database insert/upsert functions |
 | `scraper.py` | Per-university scrape loop |
@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser. The server reads the same `assist.db` the scraper wrote (set `DATABASE_PATH` if you put it elsewhere).
+This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser. The server connects to the same MongoDB the scraper wrote (set `MONGODB_URI` / `MONGODB_DB` if it isn't the local default).
 
 For production, build the client first:
 
@@ -85,16 +85,13 @@ The app runs as a single **Railway** service: Express serves both the API and th
 railway up
 ```
 
-This uploads the working tree — **including `assist.db`** (explicitly un-ignored in `.gitignore`) — builds the client, and deploys. No separate database service is needed; the SQLite file ships inside the deploy.
+This builds the client and deploys. The data lives in a separate **MongoDB** instance (e.g. a MongoDB Atlas cluster or a Railway MongoDB plugin), so set `MONGODB_URI` — and `MONGODB_DB` if it isn't `assist` — in the service's environment variables. The same connection string is used by the scraper to populate the data.
 
-Because Railway's filesystem is ephemeral, the database resets to the uploaded snapshot on every deploy. That's by design: the data is read-only reference data. To refresh it, re-run the scraper locally and deploy again:
+The service is also linked to this GitHub repo, so pushes to `master` trigger a deploy built from the repo. Because the database now lives outside the deploy, the data persists across deploys. To refresh it, re-run the scraper against the same MongoDB instance:
 
 ```bash
-python scraper/scrape_assist.py
-railway up
+MONGODB_URI="<production-connection-string>" python scraper/scrape_assist.py
 ```
-
-The service is also linked to this GitHub repo, so pushes to `master` trigger a deploy built from the repo — which means `assist.db` must be committed for git-triggered deploys to ship data.
 
 If the database is empty, the app still boots, but the majors list will be empty until the scraper has run.
 

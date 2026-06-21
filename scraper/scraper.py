@@ -5,7 +5,7 @@ from api import get_engineering_reports, fetch_articulation
 from db import upsert_major, insert_articulation
 
 
-def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
+def scrape_university(db, xsrf: str, uni_name: str, uc_id: int) -> None:
     print(f"\n{'='*50}")
     print(f"Scraping {uni_name} (ASSIST ID: {uc_id})")
     print(f"{'='*50}")
@@ -31,13 +31,12 @@ def scrape_university(conn, xsrf: str, uni_name: str, uc_id: int) -> None:
             type_counts[t] = type_counts.get(t, 0) + 1
         print(f"  {len(arts)} rows: {type_counts}")
 
-        major_id = upsert_major(conn, name, key, uni_name)
-        conn.execute("DELETE FROM articulations WHERE major_id = ?", (major_id,))
-        conn.commit()
+        major_id = upsert_major(db, name, key, uni_name)
+        db.articulations.delete_many({"major_id": major_id})
 
         for row in arts:
             art = row.get("articulation", {})
             if art.get("type") in ("Course", "Series", "Requirement"):
-                insert_articulation(conn, major_id, art)
+                insert_articulation(db, major_id, art)
 
         time.sleep(3)
