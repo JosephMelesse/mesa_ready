@@ -1,5 +1,5 @@
 import type { TransferResult } from '../types'
-import { ResultBanner, StatCard, Section, ReqItem } from './results'
+import { ResultBanner, StatCard, Section, ReqItem } from './ResultUI'
 
 export default function TransferResults({ result }: { result: TransferResult }) {
   return (

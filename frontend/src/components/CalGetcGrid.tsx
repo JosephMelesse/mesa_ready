@@ -1,5 +1,5 @@
 import type { CalGetcResult } from '../types'
-import { ResultBanner, StatCard, Section } from './results'
+import { ResultBanner, StatCard, Section } from './ResultUI'
 
 const AREA_LABELS: Record<string, string> = {
   '1A': 'English Composition',
