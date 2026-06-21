@@ -2,14 +2,12 @@
 
 A transfer readiness checker for Cerritos College students applying to UC engineering and computer science majors. Enter the courses you've taken (or plan to take), pick a target major, and instantly see which ASSIST.org articulation requirements you've met and what's still missing — plus a full Cal-GETC general education breakdown.
 
-**Live at [mesaready.up.railway.app](https://mesaready.up.railway.app)** — hosted on Railway.
-
 ## Stack
 
 | Layer | Tech |
 |---|---|
 | Frontend | React 19, TypeScript, Tailwind CSS, Vite |
-| Backend | Node.js, Express 5, TypeScript |
+| Backend | Node.js, Express 5 (JavaScript, ESM) |
 | Database | MongoDB (`mongodb` driver) |
 | Scraper | Python 3, `requests`, `pymongo` |
 
@@ -61,33 +59,41 @@ python scraper/scrape_assist.py --list-institutions
 
 ### 2. App
 
-```bash
-npm install
-npm run dev
-```
-
-This starts both the Express server (port 3001) and the Vite dev server (port 5173) concurrently. Open `http://localhost:5173` in your browser. The server connects to the same MongoDB the scraper wrote (set `MONGODB_URI` / `MONGODB_DB` if it isn't the local default).
-
-For production, build the client first:
+The backend and frontend are separate npm packages. Install and run each in its own terminal:
 
 ```bash
-npm run build
-npm start
+# Terminal 1 — API (port 3001)
+cd backend && npm install && npm run dev
 ```
 
-The built client is served statically from `client/dist/` by Express.
+```bash
+# Terminal 2 — Vite dev server (port 5173)
+cd frontend && npm install && npm run dev
+```
+
+Open `http://localhost:5173` in your browser; Vite proxies `/api` to the backend on port 3001. The backend reads `backend/.env` (e.g. `MONGODB_URI` / `MONGODB_DB`) and connects to the same MongoDB the scraper wrote.
+
+For production, build the frontend and start the server:
+
+```bash
+cd frontend && npm run build
+cd ../backend && npm start
+```
+
+With `NODE_ENV=production` the built client is served statically from `frontend/dist/` by Express.
 
 ## Deploy
 
-The app runs as a single **Railway** service: Express serves both the API and the built client. `railway.toml` defines the build (`npm --prefix client ci && npm --prefix client run build`) and start (`npm start`) commands.
+In production Express serves both the API and the built client. Build the frontend and start the server:
 
 ```bash
-railway up
+npm --prefix frontend ci && npm --prefix frontend run build
+npm --prefix backend start
 ```
 
-This builds the client and deploys. The data lives in a separate **MongoDB** instance (e.g. a MongoDB Atlas cluster or a Railway MongoDB plugin), so set `MONGODB_URI` — and `MONGODB_DB` if it isn't `assist` — in the service's environment variables. The same connection string is used by the scraper to populate the data.
+The data lives in a separate **MongoDB** instance (e.g. a MongoDB Atlas cluster), so set `MONGODB_URI` — and `MONGODB_DB` if it isn't `assist` — in the environment. The same connection string is used by the scraper to populate the data.
 
-The service is also linked to this GitHub repo, so pushes to `master` trigger a deploy built from the repo. Because the database now lives outside the deploy, the data persists across deploys. To refresh it, re-run the scraper against the same MongoDB instance:
+To refresh the data, re-run the scraper against the same MongoDB instance:
 
 ```bash
 MONGODB_URI="<production-connection-string>" python scraper/scrape_assist.py

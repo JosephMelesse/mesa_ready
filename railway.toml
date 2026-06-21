@@ -1,5 +1,0 @@
-[build]
-buildCommand = "npm --prefix client ci && npm --prefix client run build"
-
-[deploy]
-startCommand = "npm start"
