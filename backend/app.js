@@ -13,7 +13,7 @@ export function createApp() {
   app.use('/api', notFound)
 
   if (process.env.NODE_ENV === 'production') {
-    const clientDist = path.join(process.cwd(), 'client/dist')
+    const clientDist = path.join(process.cwd(), 'frontend/dist')
     app.use(express.static(clientDist))
     app.get('/{*path}', (_req, res) => {
       res.sendFile(path.join(clientDist, 'index.html'))

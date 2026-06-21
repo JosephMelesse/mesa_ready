@@ -1,51 +1,20 @@
-import { type Request, type Response } from 'express'
 import { getDB } from '../config/db.js'
 
-interface CatalogDoc {
-  prefix: string
-  course_number: string
-  course_key: string
-  min_units: string | number
-  former_identifiers: string[] | null
-}
-
-interface EmbeddedCourse {
-  course_prefix: string | null
-  course_number: string | null
-  course_title: string | null
-}
-
-interface ArtGroup {
-  conjunction: string
-  courses: EmbeddedCourse[]
-}
-
-interface ArticulationDoc {
-  articulation_type: string
-  uci_course_prefix: string | null
-  uci_course_number: string | null
-  uci_course_title: string | null
-  uci_series_name: string | null
-  uci_min_units: string | number | null
-  no_articulation_reason: string | null
-  groups: ArtGroup[]
-}
-
-export async function checkReadiness(req: Request, res: Response) {
-  const { majorId, courses } = req.body as { majorId: number; courses: string[] }
+export async function checkReadiness(req, res) {
+  const { majorId, courses } = req.body
 
   const userCourseKeys = new Set(courses.map((c) => c.trim().toUpperCase()))
   const keys = Array.from(userCourseKeys)
 
-  let catalogRows: CatalogDoc[] = []
+  let catalogRows = []
   if (keys.length > 0) {
     catalogRows = await getDB()
-      .collection<CatalogDoc>('cerritos_catalog')
+      .collection('cerritos_catalog')
       .find({ $or: [{ course_key: { $in: keys } }, { former_identifiers: { $in: keys } }] })
       .toArray()
   }
 
-  const unitMap = new Map<string, number>()
+  const unitMap = new Map()
   for (const row of catalogRows) {
     const key = `${row.prefix} ${row.course_number}`.toUpperCase()
     unitMap.set(key, Number(row.min_units))
@@ -64,13 +33,13 @@ export async function checkReadiness(req: Request, res: Response) {
   }
 
   const arts = await getDB()
-    .collection<ArticulationDoc>('articulations')
+    .collection('articulations')
     .find({ major_id: Number(majorId) })
     .toArray()
 
-  const satisfied: object[] = []
-  const missing: object[] = []
-  const noArticulation: object[] = []
+  const satisfied = []
+  const missing = []
+  const noArticulation = []
 
   for (const art of arts) {
     const uciTitle = art.uci_course_title ?? ''
@@ -90,14 +59,14 @@ export async function checkReadiness(req: Request, res: Response) {
       courses: g.courses
         .filter((c) => c.course_prefix)
         .map((c) => ({
-          prefix: c.course_prefix!,
-          number: c.course_number!,
-          title: c.course_title!,
+          prefix: c.course_prefix,
+          number: c.course_number,
+          title: c.course_title,
           key: `${c.course_prefix} ${c.course_number}`.toUpperCase(),
         })),
     }))
 
-    let satisfiedGroup: typeof groups[number] | null = null
+    let satisfiedGroup = null
     for (const group of groups) {
       const ok = group.conjunction === 'And'
         ? group.courses.every((c) => expandedKeys.has(c.key))
@@ -115,7 +84,7 @@ export async function checkReadiness(req: Request, res: Response) {
           .map((c) => `${c.prefix} ${c.number} — ${c.title}`),
       })
     } else {
-      const options: string[] = []
+      const options = []
       for (const group of groups) {
         const sep = group.conjunction === 'And' ? ' + ' : ' or '
         options.push(group.courses.map((c) => `${c.prefix} ${c.number}`).join(sep))

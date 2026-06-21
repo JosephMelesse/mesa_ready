@@ -1,19 +1,8 @@
-import { type Request, type Response } from 'express'
 import { getDB } from '../config/db.js'
 import { CAL_GETC_AREAS } from '../config/constants.js'
 
-interface CatalogDoc {
-  prefix: string
-  course_number: string
-  course_title: string
-  department: string | null
-  min_units: string | number
-  calgetc_areas: string[] | null
-  former_identifiers: string[] | null
-}
-
-export async function checkCalGetc(req: Request, res: Response) {
-  const { courses } = req.body as { courses: string[] }
+export async function checkCalGetc(req, res) {
+  const { courses } = req.body
   const userKeys = new Set(courses.map((c) => c.trim().toUpperCase()))
 
   if (userKeys.size === 0) {
@@ -26,7 +15,7 @@ export async function checkCalGetc(req: Request, res: Response) {
 
   const keys = Array.from(userKeys)
   const rows = await getDB()
-    .collection<CatalogDoc>('cerritos_catalog')
+    .collection('cerritos_catalog')
     .find({
       $and: [
         { $or: [{ course_key: { $in: keys } }, { former_identifiers: { $in: keys } }] },
@@ -35,22 +24,22 @@ export async function checkCalGetc(req: Request, res: Response) {
     })
     .toArray()
 
-  const areaMap = new Map<string, CatalogDoc[]>()
+  const areaMap = new Map()
   for (const row of rows) {
     for (const area of row.calgetc_areas ?? []) {
       if (!areaMap.has(area)) areaMap.set(area, [])
-      areaMap.get(area)!.push(row)
+      areaMap.get(area).push(row)
     }
   }
 
-  const satisfied: object[] = []
-  const missing: object[] = []
+  const satisfied = []
+  const missing = []
 
   for (const requirement of CAL_GETC_AREAS) {
     const covering = areaMap.get(requirement.area) ?? []
     const courseLabels = covering.map((c) => `${c.prefix} ${c.course_number} — ${c.course_title}`)
 
-    let note: string | null = null
+    let note = null
     let ok = covering.length >= requirement.minCourses
 
     if (ok && requirement.crossDiscipline) {

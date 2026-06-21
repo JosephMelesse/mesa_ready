@@ -1,7 +1,6 @@
-import { type Request, type Response } from 'express'
 import { getDB } from '../config/db.js'
 
-export async function listCerritosCourses(_req: Request, res: Response) {
+export async function listCerritosCourses(_req, res) {
   const docs = await getDB()
     .collection('cerritos_catalog')
     .find({})

@@ -1,0 +1,15 @@
+{
+  "name": "mesa_ready-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch --env-file=.env index.js",
+    "start": "node --env-file=.env index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongodb": "^6.12.0"
+  }
+}
