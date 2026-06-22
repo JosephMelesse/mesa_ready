@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="781" height="1182" viewBox="0 0 781 1182" fill="none">
+  <title>Orange city silhouette</title>
+  <desc>Transparent background and cutouts preserved; all visible shapes use orange shades only.</desc>
+  <defs>
+    <linearGradient id="towerOrange" x1="249" y1="0" x2="551" y2="602" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB15A"/>
+      <stop offset="0.52" stop-color="#FF8A1C"/>
+      <stop offset="1" stop-color="#E65F00"/>
+    </linearGradient>
+    <linearGradient id="leftOrange" x1="0" y1="771" x2="197" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E87511"/>
+      <stop offset="0.55" stop-color="#FF8D22"/>
+      <stop offset="1" stop-color="#FFB66A"/>
+    </linearGradient>
+    <linearGradient id="rightOrange" x1="597" y1="232" x2="781" y2="771" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8520"/>
+      <stop offset="1" stop-color="#D95700"/>
+    </linearGradient>
+    <linearGradient id="midOrange" x1="352" y1="608" x2="449" y2="706" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB15A"/>
+      <stop offset="1" stop-color="#EF6A0B"/>
+    </linearGradient>
+    <linearGradient id="softOrange" x1="19" y1="881" x2="201" y2="1066" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8C1A"/>
+      <stop offset="1" stop-color="#D86500"/>
+    </linearGradient>
+  </defs>
+
+  <g fill-rule="evenodd">
+    <path d="M399 0 L249 90 L249 601 L352 601 L353 508 L446 508 L447 601 L550 601 L550 91 Z M420 306 L421 305 L483 305 L484 306 L484 368 L482 370 L421 370 L420 369 Z M400 145 L456 145 L457 146 L457 208 L456 209 L400 209 L399 208 L399 146 Z" fill="url(#towerOrange)"/>
+    <path d="M196 232 L0 351 L0 771 L103 771 L103 680 L196 678 Z" fill="url(#leftOrange)"/>
+    <path d="M597 232 L597 678 L688 678 L689 771 L780 771 L780 342 Z M694 598 L695 597 L756 597 L758 599 L758 660 L756 662 L695 662 L694 661 Z M704 378 L765 378 L766 379 L766 442 L765 443 L704 443 L702 441 L702 380 Z M634 461 L635 460 L696 460 L697 461 L697 523 L696 524 L635 524 L634 523 Z" fill="url(#rightOrange)"/>
+    <path d="M352 608 L352 704 L448 704 L448 608 Z" fill="url(#midOrange)"/>
+    <path d="M254 701 L254 785 L338 785 L338 701 Z" fill="#F47A0B"/>
+    <path d="M105 774 L105 870 L200 870 L200 774 Z" fill="#FF9B2E"/>
+    <path d="M600 774 L600 862 L688 862 L688 774 Z" fill="#E76400"/>
+    <path d="M348 801 L348 882 L428 882 L428 801 Z" fill="#F27C13"/>
+    <path d="M693 874 L693 953 L771 953 L771 874 Z" fill="#E35F00"/>
+    <path d="M19 881 L19 962 L99 962 L99 881 Z" fill="url(#softOrange)"/>
+    <path d="M439 938 L439 1014 L514 1014 L514 938 Z" fill="#E86100"/>
+    <path d="M628 995 L628 1059 L691 1059 L691 995 Z" fill="#D95700"/>
+    <path d="M101 996 L101 1065 L170 1065 L170 996 Z" fill="#D36B00"/>
+    <path d="M353 1027 L353 1089 L354 1090 L415 1089 L415 1027 Z" fill="#EF7410"/>
+    <path d="M431 1129 L431 1180 L483 1180 L483 1129 Z" fill="#E65F00"/>
+  </g>
+</svg>
