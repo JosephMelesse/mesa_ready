@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from pymongo import MongoClient, ASCENDING, ReturnDocument
 
-from config import ACADEMIC_YEAR_CODE, MONGODB_URI, MONGODB_DB
+from config import ACADEMIC_YEAR_CODE, MONGO_URI, DB_NAME
 
 
 def _arr(values) -> list | None:
@@ -17,8 +17,8 @@ def _now() -> datetime:
 
 def get_db():
     """Open a connection and return the database handle."""
-    client = MongoClient(MONGODB_URI)
-    return client[MONGODB_DB]
+    client = MongoClient(MONGO_URI)
+    return client[DB_NAME]
 
 
 def create_schema(db) -> None:
@@ -50,14 +50,16 @@ def upsert_major(db, name: str, key: str, university: str) -> int:
         return existing["_id"]
 
     major_id = _next_id(db, "majors")
-    db.majors.insert_one({
-        "_id": major_id,
-        "name": name,
-        "academic_year": ACADEMIC_YEAR_CODE,
-        "report_key": key,
-        "university": university,
-        "scraped_at": _now(),
-    })
+    db.majors.insert_one(
+        {
+            "_id": major_id,
+            "name": name,
+            "academic_year": ACADEMIC_YEAR_CODE,
+            "report_key": key,
+            "university": university,
+            "scraped_at": _now(),
+        }
+    )
     return major_id
 
 
@@ -71,7 +73,11 @@ def insert_articulation(db, major_id: int, art: dict) -> None:
         series = art.get("series", {})
         courses = series.get("courses", [])
         first = courses[0] if courses else {}
-        prefix, number, title = first.get("prefix"), first.get("courseNumber"), first.get("courseTitle")
+        prefix, number, title = (
+            first.get("prefix"),
+            first.get("courseNumber"),
+            first.get("courseTitle"),
+        )
         units, max_units = first.get("minUnits"), first.get("maxUnits")
         department = first.get("department")
         series_name = series.get("name")
@@ -81,7 +87,11 @@ def insert_articulation(db, major_id: int, art: dict) -> None:
         units, max_units, department, series_name = None, None, None, None
     else:  # Course
         course = art.get("course", {})
-        prefix, number, title = course.get("prefix"), course.get("courseNumber"), course.get("courseTitle")
+        prefix, number, title = (
+            course.get("prefix"),
+            course.get("courseNumber"),
+            course.get("courseTitle"),
+        )
         units, max_units = course.get("minUnits"), course.get("maxUnits")
         department = course.get("department")
         series_name = None
@@ -101,39 +111,45 @@ def insert_articulation(db, major_id: int, art: dict) -> None:
             }
             for cc in group.get("items", [])
         ]
-        groups.append({
-            "group_position": group.get("position", 0),
-            "conjunction": group.get("courseConjunction", "And"),
-            "courses": courses,
-        })
+        groups.append(
+            {
+                "group_position": group.get("position", 0),
+                "conjunction": group.get("courseConjunction", "And"),
+                "courses": courses,
+            }
+        )
 
-    db.articulations.insert_one({
-        "major_id": major_id,
-        "articulation_type": art_type,
-        "uci_course_prefix": prefix,
-        "uci_course_number": number,
-        "uci_course_title": title,
-        "uci_series_name": series_name,
-        "uci_min_units": units,
-        "uci_max_units": max_units,
-        "uci_department": department,
-        "no_articulation_reason": no_reason,
-        "raw_json": json.dumps(art),
-        "groups": groups,
-    })
+    db.articulations.insert_one(
+        {
+            "major_id": major_id,
+            "articulation_type": art_type,
+            "uci_course_prefix": prefix,
+            "uci_course_number": number,
+            "uci_course_title": title,
+            "uci_series_name": series_name,
+            "uci_min_units": units,
+            "uci_max_units": max_units,
+            "uci_department": department,
+            "no_articulation_reason": no_reason,
+            "raw_json": json.dumps(art),
+            "groups": groups,
+        }
+    )
 
 
 def upsert_catalog(db, courses: list[dict]) -> None:
     for c in courses:
         notations = c.get("notations", [])
-        former = list({
-            f"{n['prefixCode']} {n['courseNumber']}".upper()
-            for n in notations
-            if n.get("prefixCode") and n.get("courseNumber")
-        })
+        former = list(
+            {
+                f"{n['prefixCode']} {n['courseNumber']}".upper()
+                for n in notations
+                if n.get("prefixCode") and n.get("courseNumber")
+            }
+        )
 
         areas = c.get("transferAreas", [])
-        igetc   = [a["code"] for a in areas if a["areaType"] == 3]
+        igetc = [a["code"] for a in areas if a["areaType"] == 3]
         calgetc = [a["code"] for a in areas if a["areaType"] == 8]
         uc_areas = [a["code"] for a in areas if a["areaType"] == 2]
 
@@ -143,21 +159,23 @@ def upsert_catalog(db, courses: list[dict]) -> None:
 
         db.cerritos_catalog.update_one(
             {"course_identifier_parent_id": c.get("courseIdentifierParentId")},
-            {"$set": {
-                "prefix": prefix,
-                "course_number": course_number,
-                "course_key": course_key,
-                "course_title": c.get("courseTitle"),
-                "department": c.get("departmentName"),
-                "min_units": c.get("minUnits"),
-                "max_units": c.get("maxUnits"),
-                "is_csu_transferable": bool(c.get("isCsuTransferable", False)),
-                "igetc_areas": _arr(igetc),
-                "calgetc_areas": _arr(calgetc),
-                "uc_transfer_areas": _arr(uc_areas),
-                "former_identifiers": _arr(former),
-                "academic_year": ACADEMIC_YEAR_CODE,
-                "scraped_at": _now(),
-            }},
+            {
+                "$set": {
+                    "prefix": prefix,
+                    "course_number": course_number,
+                    "course_key": course_key,
+                    "course_title": c.get("courseTitle"),
+                    "department": c.get("departmentName"),
+                    "min_units": c.get("minUnits"),
+                    "max_units": c.get("maxUnits"),
+                    "is_csu_transferable": bool(c.get("isCsuTransferable", False)),
+                    "igetc_areas": _arr(igetc),
+                    "calgetc_areas": _arr(calgetc),
+                    "uc_transfer_areas": _arr(uc_areas),
+                    "former_identifiers": _arr(former),
+                    "academic_year": ACADEMIC_YEAR_CODE,
+                    "scraped_at": _now(),
+                }
+            },
             upsert=True,
         )

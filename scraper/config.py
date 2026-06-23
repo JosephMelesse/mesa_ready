@@ -12,18 +12,18 @@ ACADEMIC_YEAR_ID = 76  # 2025-2026
 ACADEMIC_YEAR_CODE = "2025-2026"
 
 UC_CAMPUSES = {
-    'UCI':      120,
-    'UCLA':     117,
-    'UCSD':     7,
-    'Berkeley': 79,
+    "UCI": 120,
+    "UCLA": 117,
+    "UCSD": 7,
+    "Berkeley": 79,
 }
 
 ENGINEERING_KEYWORDS = ["engineering", "computer science"]
 
 # MongoDB connection. Defaults to a local server; override both in deployment
 # (e.g. a MongoDB Atlas connection string). The server reads the same database.
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
-MONGODB_DB = os.getenv("MONGODB_DB", "assist")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+DB_NAME = os.getenv("DB_NAME", "assist")
 
 # Applied to every HTTP request so a stalled connection can't hang the scrape.
 REQUEST_TIMEOUT = 30  # seconds

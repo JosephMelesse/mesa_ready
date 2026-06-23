@@ -7,7 +7,7 @@ for engineering-related majors, plus the full UC-transferable Cerritos catalog.
 import argparse
 import time
 
-from config import UC_CAMPUSES, MONGODB_URI, MONGODB_DB
+from config import UC_CAMPUSES, MONGO_URI, DB_NAME
 from api import get_xsrf_token, api_get, fetch_uc_transferable_catalog
 from db import get_db, create_schema, upsert_catalog
 from scraper import scrape_university
@@ -18,12 +18,14 @@ def main():
         description="Scrape ASSIST.org articulation data for Cerritos → UC transfers"
     )
     parser.add_argument(
-        '--university', choices=list(UC_CAMPUSES.keys()),
-        help="Scrape one university (default: all)"
+        "--university",
+        choices=list(UC_CAMPUSES.keys()),
+        help="Scrape one university (default: all)",
     )
     parser.add_argument(
-        '--list-institutions', action='store_true',
-        help="Print UC institution IDs from ASSIST.org and exit"
+        "--list-institutions",
+        action="store_true",
+        help="Print UC institution IDs from ASSIST.org and exit",
     )
     args = parser.parse_args()
 
@@ -32,13 +34,13 @@ def main():
 
     if args.list_institutions:
         print("\nFetching institutions from ASSIST.org...")
-        data = api_get('/api/institutions', xsrf)
-        institutions = data if isinstance(data, list) else data.get('institutions', [])
+        data = api_get("/api/institutions", xsrf)
+        institutions = data if isinstance(data, list) else data.get("institutions", [])
         print("\nUC Institutions found:")
-        for inst in sorted(institutions, key=lambda i: i.get('id', 0)):
-            names = inst.get('names', [])
-            name = names[0].get('name', '') if names else inst.get('name', str(inst))
-            if 'university of california' in name.lower():
+        for inst in sorted(institutions, key=lambda i: i.get("id", 0)):
+            names = inst.get("names", [])
+            name = names[0].get("name", "") if names else inst.get("name", str(inst))
+            if "university of california" in name.lower():
                 print(f"  ID {inst['id']:4d}  {name}")
         return
 
@@ -52,7 +54,7 @@ def main():
     catalog = fetch_uc_transferable_catalog(xsrf)
     print(f"  {len(catalog)} courses found")
 
-    print(f"\nConnecting to MongoDB at {MONGODB_URI} (db: {MONGODB_DB})...")
+    print(f"\nConnecting to MongoDB at {MONGO_URI} (db: {DB_NAME})...")
     db = get_db()
     create_schema(db)
 
