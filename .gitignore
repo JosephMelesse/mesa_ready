@@ -37,3 +37,6 @@ Pasted image.png
 
 # Python virtualenv
 .venv/
+
+# tmux/tmuxp workflow file (local, not committed)
+.tmuxp.yaml
