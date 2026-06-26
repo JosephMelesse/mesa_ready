@@ -13,12 +13,12 @@ A transfer readiness checker for Cerritos College students applying to UC engine
 
 The database is a MongoDB instance with three collections: `majors`, `articulations` (each embedding its course groups and courses), and `cerritos_catalog`. The scraper writes the data and the app reads it.
 
-Both sides read the connection string from `MONGO_URI`:
+Both sides read the same two variables:
 
-- Scraper reads `MONGO_URI` (default `mongodb://localhost:27017`) and `DB_NAME` (default `assist`).
-- Backend reads `MONGO_URI` (no default). The database name is hardcoded to `assist`.
+- `MONGO_URI`: the connection string. The scraper defaults to `mongodb://localhost:27017`; the backend has no default.
+- `DB_NAME`: the database name. The scraper defaults to `assist`; the backend has no default.
 
-So point both at the same MongoDB and you're set. One caveat: the scraper's database name is configurable via `DB_NAME`, but the backend always uses `assist`, so leave `DB_NAME` at its default unless you also change the backend.
+Point both at the same MongoDB with the same `DB_NAME` and you're set. Note that only the scraper falls back to defaults, so set both variables explicitly for the backend (in `backend/.env` for local dev, or the host's environment in deployment).
 
 ## Setup
 
@@ -80,7 +80,7 @@ Vite dev server on port 5173:
 cd frontend && npm install && npm run dev
 ```
 
-The backend's `npm run dev` loads `backend/.env` automatically, so put `MONGO_URI` there.
+The backend's `npm run dev` loads `backend/.env` automatically, so put `MONGO_URI` and `DB_NAME` there.
 
 There's no Vite proxy, so the frontend reaches the API through `VITE_API_URL`. Create `frontend/.env` and point it at the backend:
 
@@ -101,6 +101,7 @@ The app runs as three pieces: the frontend on Netlify, the backend on Render, an
 - Start command: `npm start`
 - Environment variables:
   - `MONGO_URI` = your Atlas connection string
+  - `DB_NAME` = your database name (e.g. `assist`)
   - `CORS_ORIGIN` = your Netlify site URL, so the browser is allowed to call the API
 
 Render provides `PORT` automatically; the server reads it and listens on `0.0.0.0`. If you leave `CORS_ORIGIN` unset the API allows any origin, which is fine for testing but you'll want it locked to your Netlify URL in production.
