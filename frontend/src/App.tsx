@@ -20,12 +20,15 @@ export default function App() {
   const [semesters, setSemesters] = useState<Semester[]>([makeSemester('Semester 1')])
   const [result, setResult] = useState<CheckResult | null>(null)
   const [checking, setChecking] = useState<CheckResult['type'] | null>(null)
+  const [majorsLoading, setMajorsLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([fetchMajors(), fetchCatalog()]).then(([majors, cat]) => {
-      setAllMajors(majors)
-      setCatalog(cat)
-    })
+    Promise.all([fetchMajors(), fetchCatalog()])
+      .then(([majors, cat]) => {
+        setAllMajors(majors)
+        setCatalog(cat)
+      })
+      .finally(() => setMajorsLoading(false))
   }, [])
 
   const filteredMajors = allMajors.filter((m) => m.university === selectedUniversity)
@@ -70,6 +73,7 @@ export default function App() {
         majors={filteredMajors}
         value={selectedMajorId}
         disabled={!selectedUniversity}
+        loading={majorsLoading}
         onChange={handleMajorChange}
       />
 
