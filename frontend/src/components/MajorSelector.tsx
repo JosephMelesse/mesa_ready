@@ -32,6 +32,11 @@ export default function MajorSelector({ majors, value, disabled, loading, onChan
           ))}
         </select>
       )}
+      {disabled && (
+        <p className="text-sm text-[#fc5a8d]">
+          Please select University before selecting a Target Major
+        </p>
+      )}
     </div>
   )
 }
